@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using TwitchLib.Client;
 using TwitchLib.Client.Models;
@@ -84,7 +85,7 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
 
         private static void OnJoinedChannel(object sender, TwitchLib.Client.Events.OnJoinedChannelArgs e)
         {
-            _twitch.SendMessage(e.Channel, "Use `!drop <emote> <angle> <force>` to drop");
+            //_twitch.SendMessage(e.Channel, "Use `!drop <emote> <angle> <force>` to drop");
 
             Console.WriteLine($"[{DateTime.Now.ToString()}] Joined Channel {e.Channel}");
         }
@@ -96,73 +97,81 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
             if (_connections.ContainsKey(e.ChatMessage.Channel))
             {
                 var clients = _connections[e.ChatMessage.Channel];
+                string message = e.ChatMessage.Message;
 
-                Task.Run(async ()=>
+                if (message.StartsWith("!"))
+                    Console.WriteLine($"[{DateTime.Now.ToString()}] {e.ChatMessage.Channel} - {e.ChatMessage.DisplayName}: {message}");
+
+                string[] split = message.Split(" ").Where(str => !string.IsNullOrWhiteSpace(str)).ToArray();
+                if (split.Length == 0) return;
+
+                switch (split[0])
                 {
-                    string message = e.ChatMessage.Message;
+                    case "!drop":
+                        List<int> digits = new List<int>();
+                        foreach (var str in split)
+                        {
+                            if (int.TryParse(str, out var num))
+                                digits.Add(num);
+                        }
 
-                    string[] split = message.Split(" ").Where(str => !string.IsNullOrWhiteSpace(str)).ToArray();
-                    if (split.Length == 0) return;
+                        int angle = digits.Count > 0 ? digits[0] : -1;
+                        int force = digits.Count > 1 ? digits[1] : -1;
 
-                    switch(split[0])
-                    {
-                        case "!drop":
-                            List<int> digits = new List<int>();
-                            foreach(var str in split)
-                            {
-                                if (int.TryParse(str, out var num))
-                                    digits.Add(num);
-                            }
+                        Emote emote = null;
+                        if (e.ChatMessage.EmoteSet.Emotes.Count > 0)
+                            emote = e.ChatMessage.EmoteSet.Emotes.First();
 
-                            int angle = digits.Count > 0 ? digits[0] : -1;
-                            int force = digits.Count > 1 ? digits[1] : -1;
+                        string info = "drop";
+                        info += " " + e.ChatMessage.DisplayName;
+                        if (angle != -1) info += " " + angle;
+                        if (force != -1) info += " " + force;
+                        if (emote != null) info += " " + emote.ImageUrl.Substring(0, emote.ImageUrl.Length - 3) + "3.0";
 
-                            Emote emote = null;
-                            if (e.ChatMessage.EmoteSet.Emotes.Count > 0)
-                                emote = e.ChatMessage.EmoteSet.Emotes.First();
-
-                            string info = "drop";
-                            info += " " + e.ChatMessage.DisplayName;
-                            if (angle != -1) info += " " + angle;
-                            if (force != -1) info += " " + force;
-                            if (emote != null) info += " " + emote.ImageUrl.Substring(0, emote.ImageUrl.Length - 3) + "3.0";
-
-                            foreach (var client in clients)
-                            {
-                                await client.SendInfo(info);
-                            }
-                            break;
-                        case "!dropshow":
-                            foreach (var client in clients)
-                                await client.SendInfo("dropshow");
-                            break;
-                        case "!drophide":
-                            if (e.ChatMessage.Username != e.ChatMessage.Channel) break;
-                            foreach (var client in clients)
-                                await client.SendInfo("drophide");
-                            break;
-                        case "!dropreset":
-                            if (e.ChatMessage.Username != e.ChatMessage.Channel) break;
-                            foreach (var client in clients)
-                                await client.SendInfo("dropreset");
-                            break;
-                    }
-                });
+                        foreach (var client in clients)
+                        {
+                            if(client.IsConnected)
+                                client.SendInfo(info);
+                        }
+                        break;
+                    case "!dropshow":
+                        foreach (var client in clients)
+                            if (client.IsConnected)
+                                client.SendInfo("dropshow");
+                        break;
+                    case "!drophide":
+                        if (e.ChatMessage.Username != e.ChatMessage.Channel) break;
+                        foreach (var client in clients)
+                            if (client.IsConnected)
+                                client.SendInfo("drophide");
+                        break;
+                    case "!dropreset":
+                        if (e.ChatMessage.Username != e.ChatMessage.Channel) break;
+                        foreach (var client in clients)
+                            if (client.IsConnected)
+                                client.SendInfo("dropreset");
+                        break;
+                }
             }
-            Console.WriteLine($"[{DateTime.Now.ToString()}] Message received in channel {e.ChatMessage.Channel}: {e.ChatMessage.Message}");
         }
 
         private static void OnLeftChannel(object sender, TwitchLib.Client.Events.OnLeftChannelArgs e)
         {
             if (!_isConnected) return;
-
-            if (_connections.ContainsKey(e.Channel))
-            {
-                _connections.TryRemove(e.Channel, out var clients);
-                Task.Run(async () => await Task.WhenAll(clients.Select(c => c.Close())));
-            }
-
+            RemoveClients(e.Channel);
             Console.WriteLine($"[{DateTime.Now.ToString()}] Left Channel {e.Channel}");
+        }
+
+        private static void RemoveClients(string channel)
+        {
+            if (_connections.ContainsKey(channel))
+            {
+                _connections.TryRemove(channel, out var clients);
+                foreach (var client in clients)
+                {
+                    client.Close();
+                }
+            }
         }
 
         private static void OnDisconnected(object sender, TwitchLib.Communication.Events.OnDisconnectedEventArgs e)

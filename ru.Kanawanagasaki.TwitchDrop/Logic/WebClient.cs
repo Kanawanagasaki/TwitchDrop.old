@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -27,6 +28,11 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
         public delegate void ConnectionClosed(WebClient client);
         public event ConnectionClosed OnConnectionClose;
 
+        private ConcurrentQueue<string> _messages = new ConcurrentQueue<string>();
+        private bool _handleClose = false;
+
+        private Thread _outThread;
+
         public WebClient(WebSocket socket)
         {
             this._socket = socket;
@@ -37,10 +43,44 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
         {
             while(IsConnected)
             {
-                string packet = await ReadPacket();
-
-                // do something?
+                try
+                {
+                    string packet = await ReadPacket();
+                    if (packet == "info ping")
+                    {
+                        await SendInfoAsync("pong");
+                    }
+                }
+                catch
+                {
+                    await CloseAsync();
+                }
             }
+        }
+
+        public void Handle()
+        {
+            _outThread = new Thread(async ()=>
+            {
+                while (IsConnected)
+                {
+                    while (_messages.Count != 0)
+                    {
+                        if (_messages.TryDequeue(out var message))
+                        {
+                            await SendMessageAsync(message);
+                        }
+                    }
+
+                    if (_handleClose)
+                    {
+                        await CloseAsync();
+                    }
+
+                    await Task.Delay(1000);
+                }
+            });
+            _outThread.Start();
         }
 
         public async Task<string> ReadChannel()
@@ -80,17 +120,22 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
             return packet;
         }
 
-        public async Task SendInfo(string info)
+        public void SendInfo(string info)
         {
-            await SendMessage($"info {info}");
+            _messages.Enqueue($"info {info}");
         }
 
-        public async Task SendError(string error)
+        public async Task SendInfoAsync(string info)
         {
-            await SendMessage($"error {error}");
+            await SendMessageAsync($"info {info}");
         }
 
-        public async Task SendMessage(string message)
+        public async Task SendErrorAsync(string error)
+        {
+            await SendMessageAsync($"error {error}");
+        }
+
+        public async Task SendMessageAsync(string message)
         {
             if (!this.IsConnected) return;
             if (_socket.State != WebSocketState.Open)
@@ -106,11 +151,19 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
             }
         }
 
-        public async Task Close()
+        public async Task CloseAsync()
         {
-            await _socket.CloseAsync(WebSocketCloseStatus.Empty, null, CancellationToken.None);
+            if(_socket.State == WebSocketState.Open)
+            {
+                await _socket.CloseAsync(WebSocketCloseStatus.Empty, null, CancellationToken.None);
+            }
             IsConnected = false;
             OnConnectionClose?.Invoke(this);
+        }
+
+        public void Close()
+        {
+            _handleClose = true;
         }
     }
 }

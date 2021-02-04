@@ -368,11 +368,15 @@ function Drop(nickname, options) {
     }
 }
 if (twitchChannel != "") {
-    const webSocket = new WebSocket("wss://localhost:5001/ws");
-    webSocket.onopen = (ev) => {
+    var webSocket = new WebSocket("wss://twitchdrop.kanawanagasaki.ru/ws");
+    var intervalHandler;
+    const onopen = (ev) => {
         webSocket.send(twitchChannel);
+        intervalHandler = setInterval(() => {
+            webSocket.send("info ping");
+        }, 60000);
     };
-    webSocket.onmessage = (ev) => {
+    const onmessage = (ev) => {
         let packet = ev.data.trim();
         let split = packet.split(" ");
         if (split.length > 1 && split[0] == "info") {
@@ -405,9 +409,19 @@ if (twitchChannel != "") {
             }
         }
     };
-    webSocket.onclose = (ev) => {
+    const onclose = (ev) => {
         DropHide();
+        clearInterval(intervalHandler);
+        setTimeout(() => {
+            webSocket = new WebSocket("wss://twitchdrop.kanawanagasaki.ru/ws");
+            webSocket.onopen = onopen;
+            webSocket.onmessage = onmessage;
+            webSocket.onclose = onclose;
+        }, 1000);
     };
+    webSocket.onopen = onopen;
+    webSocket.onmessage = onmessage;
+    webSocket.onclose = onclose;
 }
 let parachuteOgg = new Audio("/ogg/parachute.ogg");
 parachuteOgg.play();

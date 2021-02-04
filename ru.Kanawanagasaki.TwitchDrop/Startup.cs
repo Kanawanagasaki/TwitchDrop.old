@@ -68,6 +68,7 @@ namespace ru.Kanawanagasaki.TwitchDrop
                             var client = new WebClient(webSocket);
                             string channel = await client.ReadChannel();
                             Bot.ConnectWebClient(channel, client);
+                            client.Handle();
                             await client.Run();
                         }
                     }

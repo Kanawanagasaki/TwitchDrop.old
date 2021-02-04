@@ -113,47 +113,64 @@ function Drop(nickname:string, options:{angle:number, force:number, imageUrl:str
 
 if (twitchChannel != "")
 {
-    const webSocket = new WebSocket("wss://localhost:5001/ws");
-    webSocket.onopen = (ev) =>
-    {
+    var webSocket = new WebSocket("wss://twitchdrop.kanawanagasaki.ru/ws");
+    var intervalHandler: number;
+
+    const onopen = (ev) => {
         webSocket.send(twitchChannel);
+
+        intervalHandler = setInterval(() =>
+        {
+            webSocket.send("info ping");
+
+        }, 60_000);
     };
-    webSocket.onmessage = (ev) =>
-    {
+    const onmessage = (ev) => {
         let packet = (ev.data as string).trim();
         let split = packet.split(" ");
-        if(split.length > 1 && split[0] == "info")
-        {
-            switch(split[1])
-            {
+        if (split.length > 1 && split[0] == "info") {
+            switch (split[1]) {
                 case "dropshow": DropShow(); break;
                 case "drophide": DropHide(); break;
                 case "dropreset": DropReset(); break;
                 case "drop":
-                    if(split.length < 3) break;
-                    
+                    if (split.length < 3) break;
+
                     let nickname = split[2];
-                    let options:{angle:number,force:number,imageUrl:string} = {angle:undefined,force:undefined,imageUrl:undefined};
+                    let options: { angle: number, force: number, imageUrl: string } = { angle: undefined, force: undefined, imageUrl: undefined };
 
                     let digits = [];
                     let strings = [];
 
                     split.slice(3).forEach(el => /^\d+$/.test(el) ? digits.push(parseInt(el)) : strings.push(el));
-                    
-                    if(digits.length > 0) options.angle = digits[0];
-                    if(digits.length > 1) options.force = digits[1];
 
-                    if(strings.length > 0) options.imageUrl = strings[0];
+                    if (digits.length > 0) options.angle = digits[0];
+                    if (digits.length > 1) options.force = digits[1];
+
+                    if (strings.length > 0) options.imageUrl = strings[0];
 
                     Drop(nickname, options);
                     break;
             }
         }
     };
-    webSocket.onclose = (ev) =>
-    {
+    const onclose = (ev) => {
         DropHide();
+
+        clearInterval(intervalHandler);
+
+        setTimeout(() =>
+        {
+            webSocket = new WebSocket("wss://twitchdrop.kanawanagasaki.ru/ws");
+            webSocket.onopen = onopen;
+            webSocket.onmessage = onmessage;
+            webSocket.onclose = onclose;
+        }, 1000);
     };
+
+    webSocket.onopen = onopen;
+    webSocket.onmessage = onmessage;
+    webSocket.onclose = onclose;
 }
 
 let parachuteOgg = new Audio("/ogg/parachute.ogg");
