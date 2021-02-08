@@ -69,7 +69,7 @@ namespace ru.Kanawanagasaki.TwitchDrop
                             string channel = await client.ReadChannel();
                             Bot.ConnectWebClient(channel, client);
                             client.Handle();
-                            await client.Run();
+                            client.Run();
                         }
                     }
                     else context.Response.StatusCode = 400;

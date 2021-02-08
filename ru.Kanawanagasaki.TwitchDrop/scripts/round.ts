@@ -1,12 +1,17 @@
 ﻿class Round
 {
+    // static variables to store images
     private static _flagImages:HTMLImageElement[] = [];
     private static _anglesImage:HTMLImageElement;
 
+    // start and finish positions
     public Start:Vector;
     public Finish:Vector;
 
-    private _characters:{[nickname:string]:Character} = {};
+    // dropping characters
+    private _characters: { [nickname: string]: Character } = {};
+
+    // Random image flag for this round
     private _flagImage:HTMLImageElement;
 
     private _winnerDistance:number = 0;
@@ -20,6 +25,7 @@
         this._flagImage = Round.GetRandomFlag();
     }
 
+    // Spawning a character
     public SpawnCharacter(nickname:string, img:HTMLImageElement = undefined)
     {
         if(this.HasCharacter(nickname))
@@ -28,8 +34,11 @@
         let character = new Character(nickname, img);
         character.SetPosition(this.Start);
         this._characters[nickname] = character;
+
+        // play woo sound
         wooOgg.play();
 
+        // When character landed we checking if this character is won the round
         character.OnLanded = ()=>
         {
             let landWidth = Math.max(this.Finish.X, dropcanvas.width - this.Finish.X);
@@ -61,8 +70,11 @@
 
     public Tick(time:number)
     {
+        // every tick we saving previous measures
         for(let nickname in this._characters)
             this._characters[nickname].SaveMeasures();
+
+        // and then checking for collisions and ticking characters
         for(let nickname in this._characters)
         {
             for(let nickname2 in this._characters)

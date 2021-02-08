@@ -39,28 +39,29 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
             this.IsConnected = true;
         }
 
-        public async Task Run()
+        public void Run()
         {
-            while(IsConnected)
+            while (IsConnected && _socket.State == WebSocketState.Open)
             {
                 try
                 {
-                    string packet = await ReadPacket();
+                    string packet = ReadPacket().Result;
                     if (packet == "info ping")
                     {
-                        await SendInfoAsync("pong");
+                        SendInfoAsync("pong").Wait();
                     }
                 }
-                catch
+                catch (Exception e)
                 {
-                    await CloseAsync();
+                    Console.Error.WriteLine(e.Message);
+                    CloseAsync().Wait();
                 }
             }
         }
 
         public void Handle()
         {
-            _outThread = new Thread(async ()=>
+            _outThread = new Thread(()=>
             {
                 while (IsConnected)
                 {
@@ -68,16 +69,16 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
                     {
                         if (_messages.TryDequeue(out var message))
                         {
-                            await SendMessageAsync(message);
+                            SendMessageAsync(message).Wait();
                         }
                     }
 
                     if (_handleClose)
                     {
-                        await CloseAsync();
+                        CloseAsync().Wait();
                     }
 
-                    await Task.Delay(1000);
+                    Thread.Sleep(1000);
                 }
             });
             _outThread.Start();

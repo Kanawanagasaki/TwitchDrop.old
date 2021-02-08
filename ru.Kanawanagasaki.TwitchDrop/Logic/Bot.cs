@@ -19,13 +19,37 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
         private static TwitchClient _twitch = null;
         private static bool _isConnected = false;
         private static ConcurrentDictionary<string, List<WebClient>> _connections = new ConcurrentDictionary<string, List<WebClient>>();
+        private static List<string> _joinedChannels = new List<string>();
+        private static System.Timers.Timer _timer;
+
+        private static string _twitchBot = "";
+        private static string _twitchOAuth = "";
 
         public static void Init()
         {
             string settings = File.ReadAllText("settings.json");
             var jObj = JsonConvert.DeserializeObject<JObject>(settings);
 
-            ConnectionCredentials credentials = new ConnectionCredentials(jObj.GetValue("twitchBot").ToString(), jObj.GetValue("twitchOAuth").ToString());
+            _twitchBot = jObj.GetValue("twitchBot").ToString();
+            _twitchOAuth = jObj.GetValue("twitchOAuth").ToString();
+
+            ReConnect();
+
+            _timer = new System.Timers.Timer();
+            _timer.Interval = 5 * 60 * 1000;
+            _timer.Elapsed += OnTimer;
+            _timer.Start();
+        }
+
+        private static void ReConnect()
+        {
+            if(_twitch != null)
+            {
+                _twitch.Disconnect();
+                _twitch = null;
+            }
+
+            ConnectionCredentials credentials = new ConnectionCredentials(_twitchBot, _twitchOAuth);
             var clientOptions = new ClientOptions
             {
                 MessagesAllowedInPeriod = 750,
@@ -42,12 +66,27 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
             _twitch.OnDisconnected += OnDisconnected;
 
             _twitch.Connect();
+
+            foreach(var channel in _connections.Keys)
+            {
+                _twitch.JoinChannel(channel);
+            }
+        }
+
+        private static void OnTimer(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            var clients = _connections.Keys;
+            foreach(var channel in _joinedChannels)
+            {
+                if(!clients.Contains(channel))
+                {
+                    _twitch.LeaveChannel(channel);
+                }
+            }
         }
 
         public static void ConnectWebClient(string channel, WebClient cl)
         {
-            if (!_isConnected) return;
-
             if (!_connections.ContainsKey(channel))
                 _connections.TryAdd(channel, new List<WebClient>());
             _connections[channel].Add(cl);
@@ -59,8 +98,6 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
 
         private static void WebClient_OnConnectionClose(WebClient client)
         {
-            if (!_isConnected) return;
-
             if (_connections.ContainsKey(client.ChannelName))
             {
                 if(_connections[client.ChannelName].Contains(client))
@@ -70,7 +107,6 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
                 if(_connections[client.ChannelName].Count == 0)
                 {
                     _connections.TryRemove(client.ChannelName, out _);
-                    _twitch.LeaveChannel(client.ChannelName);
                 }
             }
 
@@ -86,7 +122,7 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
         private static void OnJoinedChannel(object sender, TwitchLib.Client.Events.OnJoinedChannelArgs e)
         {
             //_twitch.SendMessage(e.Channel, "Use `!drop <emote> <angle> <force>` to drop");
-
+            _joinedChannels.Add(e.Channel);
             Console.WriteLine($"[{DateTime.Now.ToString()}] Joined Channel {e.Channel}");
         }
 
@@ -158,6 +194,7 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
         private static void OnLeftChannel(object sender, TwitchLib.Client.Events.OnLeftChannelArgs e)
         {
             if (!_isConnected) return;
+            _joinedChannels.Remove(e.Channel);
             RemoveClients(e.Channel);
             Console.WriteLine($"[{DateTime.Now.ToString()}] Left Channel {e.Channel}");
         }
@@ -178,6 +215,7 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
         {
             _isConnected = false;
             Console.WriteLine($"[{DateTime.Now.ToString()}] Disconnected");
+            ReConnect();
         }
     }
 }
