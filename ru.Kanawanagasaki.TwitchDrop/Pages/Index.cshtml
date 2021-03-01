@@ -1,29 +1,15 @@
 ﻿@page
-@model IndexModel 
+@model IndexModel
 
 <canvas id="twitchdropcanvas"></canvas>
 <script>
-    const canvas = document.getElementById("twitchdropcanvas");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
     const twitchChannel = "@(Model.Channel)";
     const audioVolume = @(Model.Volume);
+    const renderQuality = @(Model.Quality);
+    const hideCooldown = @(Model.HideCooldown);
 
-    const anglesImage = "/img/angles.png";
-
-    const parachuteImages =
-    [
-        "/img/parachute.png"
-    ];
-
-    const flagImages = 
-    [
-        "/img/flag.png"
-    ];
-
-    const characterImages = 
-    [
-        "/img/neko.png"
-    ];
+    const images =
+    {
+        @Html.Raw(Model.RenderImages(Model.GetImages("/sprites")))
+    };
 </script>

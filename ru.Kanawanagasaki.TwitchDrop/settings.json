@@ -1,4 +1,6 @@
 {
   "twitchBot": "",
-  "twitchOAuth": ""
+  "twitchOAuth": "",
+  "twitchClientId": "",
+  "twitchSecret": ""
 }

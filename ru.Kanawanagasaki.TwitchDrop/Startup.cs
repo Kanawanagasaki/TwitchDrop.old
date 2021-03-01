@@ -46,9 +46,7 @@ namespace ru.Kanawanagasaki.TwitchDrop
             });
 
             app.UseStaticFiles();
-
             app.UseRouting();
-
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
@@ -63,14 +61,8 @@ namespace ru.Kanawanagasaki.TwitchDrop
                 {
                     if (context.WebSockets.IsWebSocketRequest)
                     {
-                        using (WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync())
-                        {
-                            var client = new WebClient(webSocket);
-                            string channel = await client.ReadChannel();
-                            Bot.ConnectWebClient(channel, client);
-                            client.Handle();
-                            client.Run();
-                        }
+                        var socket = await context.WebSockets.AcceptWebSocketAsync();
+                        await Hub.ProcessWebSocket(socket);
                     }
                     else context.Response.StatusCode = 400;
                 }

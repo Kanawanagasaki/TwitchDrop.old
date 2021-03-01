@@ -19,69 +19,61 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
 {
     public class WebClient
     {
-        public bool IsConnected { get; private set; }
+        private static uint _aiId = 10000;
 
         private WebSocket _socket = null;
         private byte[] _buffer = new byte[1024 * 4];
+
+        public uint Id { get; private set; } = 0;
+        public bool IsConnected { get; private set; }
         public string ChannelName { get; private set; }
 
+        public delegate void InfoReceived(WebClient client, string command, string[] args);
+        public event InfoReceived OnInfoReceived;
+        public delegate void ErrorReceived(WebClient client, string command, int code, string error);
+        public event ErrorReceived OnErrorReceived;
         public delegate void ConnectionClosed(WebClient client);
         public event ConnectionClosed OnConnectionClose;
 
-        private ConcurrentQueue<string> _messages = new ConcurrentQueue<string>();
-        private bool _handleClose = false;
-
-        private Thread _outThread;
-
         public WebClient(WebSocket socket)
         {
-            this._socket = socket;
-            this.IsConnected = true;
+            Id = _aiId++;
+
+            _socket = socket;
+            IsConnected = true;
         }
 
-        public void Run()
+        public async Task Run()
         {
-            while (IsConnected && _socket.State == WebSocketState.Open)
+            while (IsConnected)
             {
-                try
+                if (_socket.CloseStatus.HasValue)
                 {
-                    string packet = ReadPacket().Result;
-                    if (packet == "info ping")
-                    {
-                        SendInfoAsync("pong").Wait();
-                    }
+                    await CloseAsync();
                 }
-                catch (Exception e)
+                else
                 {
-                    Console.Error.WriteLine(e.Message);
-                    CloseAsync().Wait();
-                }
-            }
-        }
-
-        public void Handle()
-        {
-            _outThread = new Thread(()=>
-            {
-                while (IsConnected)
-                {
-                    while (_messages.Count != 0)
+                    try
                     {
-                        if (_messages.TryDequeue(out var message))
+                        string packet = await ReadPacket();
+                        string[] split = packet.Split(' ');
+                        if (split.Length > 1 && split[0] == "info")
                         {
-                            SendMessageAsync(message).Wait();
+                            OnInfoReceived?.Invoke(this, split[1], split.Skip(2).ToArray());
+                        }
+                        else if (split.Length > 2 && split[0] == "error")
+                        {
+                            int code = -1;
+                            int.TryParse(split[2], out code);
+                            OnErrorReceived?.Invoke(this, split[1], code, string.Join(" ", split.Skip(3)));
                         }
                     }
-
-                    if (_handleClose)
+                    catch
                     {
-                        CloseAsync().Wait();
+                        await CloseAsync();
                     }
-
-                    Thread.Sleep(1000);
                 }
-            });
-            _outThread.Start();
+            }
         }
 
         public async Task<string> ReadChannel()
@@ -89,11 +81,6 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
             if(ChannelName == null)
                 ChannelName = await ReadPacket();
             return ChannelName;
-        }
-
-        public bool CheckConnection()
-        {
-            return _socket.State == WebSocketState.Open;
         }
 
         private async Task<string> ReadPacket()
@@ -113,40 +100,30 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
             }
 
             if (result.CloseStatus.HasValue)
-            {
-                IsConnected = false;
-                OnConnectionClose?.Invoke(this);
-            }
+                await CloseAsync();
 
             return packet;
         }
 
-        public void SendInfo(string info)
+        public async Task SendInfoAsync(string command, IEnumerable<string> args = null)
         {
-            _messages.Enqueue($"info {info}");
+            string message = $"info {command}";
+            if (args != null) message += " " + string.Join(" ", args);
+            await SendMessageAsync(message);
         }
 
-        public async Task SendInfoAsync(string info)
+        public async Task SendErrorAsync(string command, int code, string error)
         {
-            await SendMessageAsync($"info {info}");
-        }
-
-        public async Task SendErrorAsync(string error)
-        {
-            await SendMessageAsync($"error {error}");
+            await SendMessageAsync($"error {command} {code} {error}");
         }
 
         public async Task SendMessageAsync(string message)
         {
             if (!this.IsConnected) return;
-            if (_socket.State != WebSocketState.Open)
-            {
-                IsConnected = false;
-                OnConnectionClose?.Invoke(this);
-            }
+            if (_socket.CloseStatus.HasValue)
+                await CloseAsync();
             else
             {
-                if (!message.EndsWith("\n")) message = $"{message}\n";
                 var bytes = Encoding.UTF8.GetBytes(message);
                 await _socket.SendAsync(new ArraySegment<byte>(bytes, 0, bytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
             }
@@ -154,17 +131,10 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
 
         public async Task CloseAsync()
         {
-            if(_socket.State == WebSocketState.Open)
-            {
+            if(!_socket.CloseStatus.HasValue)
                 await _socket.CloseAsync(WebSocketCloseStatus.Empty, null, CancellationToken.None);
-            }
             IsConnected = false;
             OnConnectionClose?.Invoke(this);
-        }
-
-        public void Close()
-        {
-            _handleClose = true;
         }
     }
 }

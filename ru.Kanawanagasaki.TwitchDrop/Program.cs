@@ -2,9 +2,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using ru.Kanawanagasaki.TwitchDrop.Logic;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -14,7 +17,7 @@ namespace ru.Kanawanagasaki.TwitchDrop
     {
         public static void Main(string[] args)
         {
-            Bot.Init();
+            Hub.Init();
             CreateHostBuilder(args).Build().Run();
         }
 

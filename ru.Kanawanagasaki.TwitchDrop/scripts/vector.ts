@@ -3,7 +3,7 @@
     public X: number;
     public Y: number;
 
-    public constructor(x: number, y: number)
+    public constructor(x: number = 0, y: number = 0)
     {
         this.X = x;
         this.Y = y;
@@ -45,9 +45,18 @@
         return Math.sqrt(this.X * this.X + this.Y * this.Y);
     }
 
+    public Angle()
+    {
+        return Math.atan2(this.Y, this.X);
+    }
+
     public static Random()
     {
-        let angle = Math.random() * Math.PI * 2;
+        return Vector.FromAngle(Math.random() * Math.PI * 2);
+    }
+
+    public static FromAngle(angle:number)
+    {
         let x = Math.cos(angle);
         let y = Math.sin(angle);
         return new Vector(x, y);
