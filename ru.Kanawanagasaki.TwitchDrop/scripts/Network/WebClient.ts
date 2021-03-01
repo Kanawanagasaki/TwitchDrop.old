@@ -55,7 +55,7 @@ class WebClient
         this._isOpen = false;
         this._socket = null;
 
-        this.Init();
+        setTimeout(() => this.Init(), 2500);
     }
 
     private Pinger()

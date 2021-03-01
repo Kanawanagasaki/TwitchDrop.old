@@ -1318,7 +1318,7 @@ class WebClient {
     OnClose() {
         this._isOpen = false;
         this._socket = null;
-        this.Init();
+        setTimeout(() => this.Init(), 2500);
     }
     Pinger() {
         if (this._isOpen)

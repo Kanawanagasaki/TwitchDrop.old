@@ -131,7 +131,7 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
 
         public async Task CloseAsync()
         {
-            if(!_socket.CloseStatus.HasValue)
+            if(!_socket.CloseStatus.HasValue && _socket.State != WebSocketState.Aborted)
                 await _socket.CloseAsync(WebSocketCloseStatus.Empty, null, CancellationToken.None);
             IsConnected = false;
             OnConnectionClose?.Invoke(this);
