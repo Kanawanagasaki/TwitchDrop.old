@@ -50,7 +50,7 @@ class GameEnvironment
         this.Round = new RoundEnvironment(this, hideCooldown);
         this._prevFrameTime = performance.now();
 
-        this.SetupAnimations();
+        this.SetupAnimations(animations);
 
         if(this._websocketAddress && this._channel)
             this._client = new WebClient(this, this._websocketAddress, this._channel);
@@ -94,9 +94,10 @@ class GameEnvironment
         }, 3_500);
     }
 
-    private SetupAnimations()
+    private SetupAnimations(info:{path:string, width:number, height:number, fps:number, framesCount:number}[])
     {
-        this.Sprites.Get("arrow").Animate(58, 66, 48);
+        for(let i of info)
+            this.Sprites.Get(i.path).Animate(i.width, i.height, i.fps, i.framesCount);
     }
 
     private Start()

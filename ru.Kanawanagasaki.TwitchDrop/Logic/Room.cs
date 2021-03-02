@@ -3,6 +3,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -173,9 +174,14 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
             List<decimal> digits = new List<decimal>();
             List<string> strings = new List<string>();
             List<BttvEmote> bttvEmotes = new List<BttvEmote>();
+            Dictionary<string, string> customEmotes = new Dictionary<string, string>();
             foreach (var str in args)
             {
-                if (BttvEmotes.ContainsKey(str))
+                var customEmoteFiles = Directory.GetFiles("wwwroot/img/custom", $"{str}.*", SearchOption.TopDirectoryOnly);
+
+                if (customEmoteFiles.Length > 0)
+                    customEmotes.Add(str, customEmoteFiles[0].Substring(customEmoteFiles[0].IndexOf("wwwroot") + "wwwroot".Length).Replace("\\","/"));
+                else if (BttvEmotes.ContainsKey(str))
                     bttvEmotes.Add(BttvEmotes[str]);
                 else if (decimal.TryParse(str, out var num))
                     digits.Add(num);
@@ -205,11 +211,30 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
             {
                 var emote = bttvEmotes.First();
                 Dictionary<string, object> info;
-                if (emote.IsAnimation)
-                    info = emote.GetAnimationInfo();
+                if (emote.IsAnimation) info = emote.GetAnimationInfo();
                 else info = new Dictionary<string, object>();
                 info["isAnimation"] = emote.IsAnimation;
                 info["url"] = emote.GetAnimationUrl();
+
+                string json = JsonConvert.SerializeObject(info);
+                image = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+            }
+            else if(customEmotes.Count != 0)
+            {
+                var emote = customEmotes.First();
+
+                Dictionary<string, object> info = new Dictionary<string, object>();
+                if(File.Exists(@$"wwwroot/static/customanimations/{emote.Key}.json"))
+                {
+                    var animation = JsonConvert.DeserializeObject<JObject>(File.ReadAllText(@$"wwwroot/static/customanimations/{emote.Key}.json"));
+                    info["width"] = animation.Value<int>("width");
+                    info["height"] = animation.Value<int>("height");
+                    info["fps"] = animation.Value<int>("fps");
+                    info["framesCount"] = animation.Value<int>("framesCount");
+                    info["isAnimation"] = true;
+                }
+                else info["isAnimation"] = false;
+                info["url"] = emote.Value;
 
                 string json = JsonConvert.SerializeObject(info);
                 image = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));

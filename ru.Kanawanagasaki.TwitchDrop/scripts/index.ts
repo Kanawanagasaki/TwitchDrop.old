@@ -26,13 +26,15 @@
 declare const renderQuality: number;
 declare const twitchChannel: string;
 declare const audioVolume: number;
-declare const images:any;
 declare const hideCooldown:number;
+declare const images:any;
+declare const animations:any;
+
 
 const spritesPath = "img/sprites";
 
-//const websocketAddress = "ws://localhost:5501/ws";
-const websocketAddress = "wss://twitchdrop.kanawanagasaki.ru/ws";
+const websocketAddress = "ws://localhost:5501/ws";
+//const websocketAddress = "wss://twitchdrop.kanawanagasaki.ru/ws";
 
 const canvas = <HTMLCanvasElement>document.getElementById("twitchdropcanvas");
 canvas.width = window.innerWidth;

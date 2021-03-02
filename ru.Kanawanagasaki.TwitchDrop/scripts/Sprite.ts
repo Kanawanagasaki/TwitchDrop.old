@@ -46,14 +46,14 @@ class Sprite
         return ret;
     }
     
-    public Animate(width:number, height:number, fps:number, framesCount:number = undefined)
+    public Animate(width:number, height:number, fps:number, framesCount:number = null)
     {
         this._isAnimation = true;
 
         this._columnsCount = Math.floor(this._width / width);
         this._rowsCount = Math.floor(this._height / height);
 
-        if(framesCount === undefined)
+        if(framesCount === undefined || framesCount === null)
             this._framesCount = this._columnsCount * this._rowsCount;
         else
             this._framesCount = framesCount;

@@ -64,11 +64,11 @@ class Sprite {
             ret = ret.substr(slashIndex + 1);
         return ret;
     }
-    Animate(width, height, fps, framesCount = undefined) {
+    Animate(width, height, fps, framesCount = null) {
         this._isAnimation = true;
         this._columnsCount = Math.floor(this._width / width);
         this._rowsCount = Math.floor(this._height / height);
-        if (framesCount === undefined)
+        if (framesCount === undefined || framesCount === null)
             this._framesCount = this._columnsCount * this._rowsCount;
         else
             this._framesCount = framesCount;
@@ -425,7 +425,7 @@ class GameEnvironment {
     Init() {
         this.Round = new RoundEnvironment(this, hideCooldown);
         this._prevFrameTime = performance.now();
-        this.SetupAnimations();
+        this.SetupAnimations(animations);
         if (this._websocketAddress && this._channel)
             this._client = new WebClient(this, this._websocketAddress, this._channel);
         else
@@ -464,8 +464,9 @@ class GameEnvironment {
             }, 30000);
         }, 3500);
     }
-    SetupAnimations() {
-        this.Sprites.Get("arrow").Animate(58, 66, 48);
+    SetupAnimations(info) {
+        for (let i of info)
+            this.Sprites.Get(i.path).Animate(i.width, i.height, i.fps, i.framesCount);
     }
     Start() {
         window.requestAnimationFrame(() => this.GameLoop());
@@ -1381,8 +1382,8 @@ class CommandsCollection {
 ///<reference path="Network/WebClient.ts" />
 ///<reference path="Network/CommandsCollection.ts" />
 const spritesPath = "img/sprites";
-//const websocketAddress = "ws://localhost:5501/ws";
-const websocketAddress = "wss://twitchdrop.kanawanagasaki.ru/ws";
+const websocketAddress = "ws://localhost:5501/ws";
+//const websocketAddress = "wss://twitchdrop.kanawanagasaki.ru/ws";
 const canvas = document.getElementById("twitchdropcanvas");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;

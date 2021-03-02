@@ -79,7 +79,13 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
                             g.DrawImage(img, x * width, y * height, width, height);
                         }
 
-                        animation.Save(@$"wwwroot/img/bttvanimations/{Id}.png", ImageFormat.Png);
+                        using (MemoryStream memory = new MemoryStream())
+                        using (FileStream fs = new FileStream(@$"wwwroot/img/bttvanimations/{Id}.png", FileMode.Create, FileAccess.ReadWrite))
+                        {
+                            animation.Save(memory, ImageFormat.Png);
+                            byte[] bytes = memory.ToArray();
+                            fs.Write(bytes, 0, bytes.Length);
+                        }
 
                         Dictionary<string, object> info = new Dictionary<string, object>();
                         info["width"] = width;
@@ -113,8 +119,8 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
                 Dictionary<string, object> ret = new Dictionary<string, object>();
                 ret["width"] = width;
                 ret["height"] = height;
-                ret["framesCount"] = framesCount;
                 ret["fps"] = fps;
+                ret["framesCount"] = framesCount;
 
                 return ret;
             }

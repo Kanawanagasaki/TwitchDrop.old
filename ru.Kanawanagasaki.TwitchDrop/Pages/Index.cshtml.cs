@@ -98,6 +98,11 @@ namespace ru.Kanawanagasaki.TwitchDrop.Pages
 
             return ret;
         }
+
+        public string GetAnimations()
+        {
+            return System.IO.File.ReadAllText("wwwroot/static/spriteanimations.json");
+        }
     }
 
     public struct Folder
