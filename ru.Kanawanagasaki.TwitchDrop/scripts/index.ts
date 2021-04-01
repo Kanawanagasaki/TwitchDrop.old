@@ -1,4 +1,5 @@
-﻿///<reference path="Sprite.ts" />
+﻿///<reference path="NN.ts" />
+///<reference path="Sprite.ts" />
 ///<reference path="SpriteCollection.ts" />
 ///<reference path="AudioDevice.ts" />
 ///<reference path="Vector.ts" />
@@ -10,6 +11,8 @@
 ///<reference path="Objects/Environment/GameEnvironment.ts" />
 ///<reference path="Objects/Environment/WorldEnvironment.ts" />
 ///<reference path="Objects/Environment/RoundEnvironment.ts" />
+///<reference path="Objects/Particles/Particle.ts" />
+///<reference path="Objects/Particles/StarParticle.ts" />
 ///<reference path="Objects/Entity/StartEntity.ts" />
 ///<reference path="Objects/Entity/FinishEntity.ts" />
 ///<reference path="Objects/Entity/CharacterEntity.ts" />
@@ -23,18 +26,15 @@
 ///<reference path="Network/CommandsCollection.ts" />
 
 // declaring variables from Index.cshtml
-declare const renderQuality: number;
-declare const twitchChannel: string;
-declare const audioVolume: number;
+declare const renderQuality:number;
+declare const twitchChannel:string;
+declare const connectionType:string;
+declare const audioVolume:number;
 declare const hideCooldown:number;
 declare const images:any;
 declare const animations:any;
 
-
 const spritesPath = "img/sprites";
-
-const websocketAddress = "ws://localhost:5501/ws";
-//const websocketAddress = "wss://twitchdrop.kanawanagasaki.ru/ws";
 
 const canvas = <HTMLCanvasElement>document.getElementById("twitchdropcanvas");
 canvas.width = window.innerWidth;

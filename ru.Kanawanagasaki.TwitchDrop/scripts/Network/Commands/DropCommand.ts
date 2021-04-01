@@ -2,38 +2,28 @@ class DropCommand extends ACommand
 {
     public GetName = () => "drop";
 
-    // info drop <nickname> <angle> <initSpeed> <canparachute> <imageUrl>
     public Info(args: string[])
     {
-        if (args.length == 0) return;
+        if (args.length < 3) return;
 
         let nickname = args[0];
-        let options:any = {};
+        let options = JSON.parse(atob(args[1]));
+        let image = JSON.parse(atob(args[2]));
 
-        let digits:number[] = [];
-        let strings:string[] = [];
-
-        args.slice(1).forEach(el => /^[+-]?([0-9]*[.])?[0-9]+$/.test(el) ? digits.push(parseFloat(el)) : strings.push(el));
-
-        if (digits.length > 0) options.angle = digits[0];
-        if (digits.length > 1) options.initSpeed = digits[1];
-
-        if (strings.length > 0) options.canParachute = strings[0].toLowerCase() == "true";
-
-        if (strings.length > 1)
+        if(image)
         {
-            let base64 = strings[1];
-            let json = atob(base64);
-            let info = JSON.parse(json);
-
-            options.sprite = new Sprite(info.url);
+            options.sprite = new Sprite(image.url);
             options.sprite.OnLoad = ()=>
             {
-                if(info.isAnimation)
-                    options.sprite.Animate(info.width, info.height, info.fps, info.framesCount);
+                if(image.isAnimation)
+                    options.sprite.Animate(image.width, image.height, image.fps, image.framesCount);
                 this.Client.Game.Round.Drop(nickname, options);
             };
-
+            options.sprite.OnError = ()=>
+            {
+                options.sprite = undefined;
+                this.Client.Game.Round.Drop(nickname, options);
+            };
         }
         else this.Client.Game.Round.Drop(nickname, options);
     }

@@ -2,6 +2,7 @@ class Sprite
 {
     public Uri:string;
     public OnLoad:()=>any;
+    public OnError:()=>any;
 
     private _width:number;
     private _height:number;
@@ -27,6 +28,11 @@ class Sprite
             if(this.OnLoad)
                 this.OnLoad();
         };
+        img.onerror = ()=>
+        {
+            if(this.OnError)
+                this.OnError();
+        }
         img.src = uri;
 
         this.Uri = uri;

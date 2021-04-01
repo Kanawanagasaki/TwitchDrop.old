@@ -1,66 +1,35 @@
-class WebClient
+abstract class WebClient
 {
-    private _uri:string;
-    private _channel:string;
-    private _socket:WebSocket;
-    private _isOpen:boolean;
+    protected channel:string;
 
-    private _commands:CommandsCollection;
+    protected commands:CommandsCollection;
 
     public Game:GameEnvironment;
 
-    public constructor(game:GameEnvironment, uri:string, channel:string)
+    public constructor(game:GameEnvironment, channel:string)
     {
         this.Game = game;
-
-        this._uri = uri;
-        this._channel = channel;
-        this._socket = null;
-        this._isOpen = false;
-
-        this._commands = new CommandsCollection(this);
-        
-        this.Init();
-
-        setInterval(()=>this.Pinger(), 60_000);
+        this.channel = channel;
+        this.commands = new CommandsCollection(this);
+        setTimeout(()=>this.Init(), 0);
     }
 
-    private Init()
+    public SendInfo(command:string, args:string|string[])
     {
-        if(this._socket !== null)
-        {
-            this._socket.close(1000);
-            this._socket = null;
-        }
-
-        this._socket = new WebSocket(this._uri);
-        this._socket.onopen = ()=>this.OnOpen();
-        this._socket.onmessage = (ev)=>this.OnMessage(ev);
-        this._socket.onclose = ()=>this.OnClose();
+        if(Array.isArray(args))
+            args = args.join(" ");
+        this.SendMessage(`info ${args}`);
     }
 
-    private OnOpen()
+    public SendError(command:string, code:number, message:string)
     {
-        this._socket.send(this._channel);
-        this._isOpen = true;
+        this.SendMessage(`error ${command} ${code} ${message}`);
     }
+    
+    public abstract SendMessage(message:string);
 
-    private OnMessage(ev:MessageEvent<string>)
-    {
-        this._commands.Parse(ev.data);
-    }
-
-    private OnClose()
-    {
-        this._isOpen = false;
-        this._socket = null;
-
-        setTimeout(() => this.Init(), 2500);
-    }
-
-    private Pinger()
-    {
-        if(this._isOpen)
-            this._socket.send("info ping");
-    }
+    protected abstract Init();
+    protected abstract OnOpen();
+    protected abstract OnMessage(message:string);
+    protected abstract OnClose();
 }

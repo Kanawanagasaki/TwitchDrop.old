@@ -1,0 +1,1 @@
+dotnet publish -c release -o ..\www --framework net5.0 --runtime linux-x64 --self-contained false

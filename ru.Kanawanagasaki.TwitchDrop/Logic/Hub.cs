@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.AspNetCore.Http;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Concurrent;
@@ -16,7 +17,7 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
         private static ChatClient _chat;
         private static ConcurrentDictionary<string, Room> _rooms = new ConcurrentDictionary<string, Room>();
 
-        public static void Init()
+        public static async Task Init()
         {
             string settings = File.ReadAllText("settings.json");
             var jObj = JsonConvert.DeserializeObject<JObject>(settings);
@@ -27,31 +28,44 @@ namespace ru.Kanawanagasaki.TwitchDrop.Logic
             string secret = jObj.GetValue("twitchSecret").ToString();
 
             _chat = new ChatClient(botname, oauth, clientid, secret);
+            await _chat.Init();
         }
 
-        public static async Task ProcessWebSocket(WebSocket socket)
+        public static async Task ProcessWebClient(WebClient web)
         {
-            var web = new WebClient(socket);
-            string channel = await web.ReadChannel();
-
-            if(!_rooms.ContainsKey(channel))
+            try
             {
-                var room = new Room(channel, _chat);
-                room.OnDestroying += OnRoomDestroying;
-                _rooms[channel] = room;
+                string channel = await web.ReadChannel();
+
+                if(!string.IsNullOrWhiteSpace(channel))
+                {
+                    if (!_rooms.ContainsKey(channel))
+                    {
+                        var room = new Room(channel, _chat);
+                        await room.LoadEmotes();
+                        room.OnDestroying += OnRoomDestroying;
+                        _rooms.TryAdd(channel, room);
+                    }
+
+                    if (_rooms.TryGetValue(channel, out var outRoom))
+                        outRoom.ProcessWebClient(web);
+
+                    if (web.IsConnected)
+                    {
+                        await web.Init();
+                        await web.Run();
+                    }
+                }
             }
-
-            _rooms[channel].ProcessWebClient(web);
-
-            await web.Run();
+            catch(Exception e)
+            {
+                Console.WriteLine($"[{DateTime.Now}] Error occurred while trying to process web client\n\t- {e.Message}");
+            }
         }
 
         private static void OnRoomDestroying(Room room)
         {
-            while(!_rooms.TryRemove(room.Channel, out _))
-            {
-                Thread.Sleep(10);
-            }
+            _rooms.TryRemove(room.Channel, out _);
         }
     }
 }

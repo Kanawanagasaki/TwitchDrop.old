@@ -3,10 +3,10 @@ class GameEnvironment
     private _canvas:HTMLCanvasElement;
     private _context:CanvasRenderingContext2D;
 
-    private _websocketAddress:string;
     private _client:WebClient;
 
     private _channel:string;
+    private _connectionType:string;
 
     public Sprites:SpriteCollection;
     public Audio:AudioDevice;
@@ -31,8 +31,8 @@ class GameEnvironment
         this._context.font = '24px Sans-serif';
         this._context.strokeStyle = 'black';
 
-        this._websocketAddress = websocketAddress;
         this._channel = twitchChannel;
+        this._connectionType = connectionType.toLowerCase();
 
         this.Sprites = new SpriteCollection(spritesPath);
         this.Sprites.Load(images)
@@ -52,8 +52,13 @@ class GameEnvironment
 
         this.SetupAnimations(animations);
 
-        if(this._websocketAddress && this._channel)
-            this._client = new WebClient(this, this._websocketAddress, this._channel);
+        if(this._channel)
+        {
+            if(this._connectionType === "ws" || this._connectionType === "websocket")
+                this._client = new WebSocketClient(this, this._channel);
+            else
+                this._client = new ServerSideEventClient(this, this._channel);
+        }
         else this.Simulate();
     }
 
@@ -83,6 +88,12 @@ class GameEnvironment
             "Ethan",
             "Evelyn"
         ];
+
+        setInterval(()=>
+        {
+            this.Round.Reset();
+        }, 35_000);
+
         setInterval(()=>
         {
             let char = game.Round.Drop(nicknames[index++], {canParachute:Math.random()<0.55});

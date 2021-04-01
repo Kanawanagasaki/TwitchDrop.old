@@ -48,6 +48,11 @@ class WorldEnvironment implements IDrawable
         else this._despawning.push(obj);
     }
 
+    public IsSpawned(obj:AObject)
+    {
+        return this.Objects.some(o=>o.Id == obj.Id);
+    }
+
     public Tick(time:number)
     {
         for(let obj of this.Objects)

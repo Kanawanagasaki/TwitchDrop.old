@@ -15,9 +15,10 @@ namespace ru.Kanawanagasaki.TwitchDrop
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
-            Hub.Init();
+            await Hub.Init();
+            await Room.Init();
             CreateHostBuilder(args).Build().Run();
         }
 

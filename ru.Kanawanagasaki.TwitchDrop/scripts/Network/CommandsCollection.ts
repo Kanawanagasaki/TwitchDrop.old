@@ -10,6 +10,7 @@ class CommandsCollection
         this.Register(new DropShowCommand(client));
         this.Register(new DropHideCommand(client));
         this.Register(new DropResetCommand(client));
+        this.Register(new IdCommand(client));
     }
 
     public Register(command:ACommand)

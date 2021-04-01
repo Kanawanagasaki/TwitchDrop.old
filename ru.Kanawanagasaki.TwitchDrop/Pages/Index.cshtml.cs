@@ -12,6 +12,7 @@ namespace ru.Kanawanagasaki.TwitchDrop.Pages
     public class IndexModel : PageModel
     {
         public string Channel { get; set; } = "";
+        public string ConnectionType { get; set; } = "true";
         public string Volume { get; set; } = "0.25";
         public string Quality { get; set; } = "8";
         public string HideCooldown { get; set; } = "90000";
@@ -23,9 +24,10 @@ namespace ru.Kanawanagasaki.TwitchDrop.Pages
             _logger = logger;
         }
 
-        public void OnGet(string channel, int volume = 25, int quality = 8, int cooldown = 90_000)
+        public void OnGet(string channel, string connectionType = "sse", int volume = 25, int quality = 8, int cooldown = 90_000)
         {
             Channel = channel;
+            ConnectionType = connectionType;
 
             if (volume < 0) volume = 0;
             if (volume > 100) volume = 100;

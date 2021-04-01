@@ -3,8 +3,8 @@ class RoundEnvironment extends WorldEnvironment
     private _hideCooldown:number;
     private _showTime:number;
 
-    private _start:StartEntity;
-    private _finish:FinishEntity;
+    public Start:StartEntity;
+    public Finish:FinishEntity;
 
     private _winner:CharacterEntity;
     private _winnerDistance:number;
@@ -20,8 +20,8 @@ class RoundEnvironment extends WorldEnvironment
         this._hideCooldown = hideCooldown;
         this._showTime = performance.now();
 
-        this._start = new StartEntity();
-        this._finish = new FinishEntity();
+        this.Start = new StartEntity();
+        this.Finish = new FinishEntity();
 
         this._winner = null;
         this._winnerDistance = 0;
@@ -30,8 +30,8 @@ class RoundEnvironment extends WorldEnvironment
         this._droppedCharacters = {};
         this._actionQueue = [];
 
-        this.Spawn(this._start);
-        this.Spawn(this._finish);
+        this.Spawn(this.Start);
+        this.Spawn(this.Finish);
     }
 
     public Tick(time:number)
@@ -48,7 +48,7 @@ class RoundEnvironment extends WorldEnvironment
 
     public Show()
     {
-        if(!this._start.IsReady || !this._finish.IsReady)
+        if(!this.Start.IsReady || !this.Finish.IsReady)
         {
             this._actionQueue.push(()=>this.Show());
             return;
@@ -57,15 +57,15 @@ class RoundEnvironment extends WorldEnvironment
         this._showTime = performance.now();
         this._isHidden = false;
 
-        if(this._start.IsHidden)
-            this._start.Show();
-        if(this._finish.IsHidden)
-            this._finish.Show();
+        if(this.Start.IsHidden)
+            this.Start.Show();
+        if(this.Finish.IsHidden)
+            this.Finish.Show();
     }
 
     public Hide()
     {
-        if(!this._start.IsReady || !this._finish.IsReady)
+        if(!this.Start.IsReady || !this.Finish.IsReady)
         {
             this._actionQueue.push(()=>this.Hide());
             return;
@@ -73,21 +73,21 @@ class RoundEnvironment extends WorldEnvironment
         
         for(let obj of this.Objects)
         {
-            if(obj.Id != this._start.Id && obj.Id != this._finish.Id)
+            if(obj.Id != this.Start.Id && obj.Id != this.Finish.Id)
                 this.Despawn(obj);
         }
 
         this._isHidden = true;
 
-        if(!this._start.IsHidden)
-            this._start.Hide();
-        if(!this._finish.IsHidden)
-            this._finish.Hide();
+        if(!this.Start.IsHidden)
+            this.Start.Hide();
+        if(!this.Finish.IsHidden)
+            this.Finish.Hide();
     }
 
     public Reset()
     {
-        if(!this._start.IsReady || !this._finish.IsReady)
+        if(!this.Start.IsReady || !this.Finish.IsReady)
         {
             this._actionQueue.push(()=>this.Reset());
             return;
@@ -95,25 +95,25 @@ class RoundEnvironment extends WorldEnvironment
         
         for(let obj of this.Objects)
         {
-            if(obj.Id != this._start.Id && obj.Id != this._finish.Id)
+            if(obj.Id != this.Start.Id && obj.Id != this.Finish.Id)
                 this.Despawn(obj);
         }
 
         this._showTime = performance.now();
         this._isHidden = false;
 
-        if(this._start.IsHidden)
-            this._start.Show();
-        else this._start.Reset();
+        if(this.Start.IsHidden)
+            this.Start.Show();
+        else this.Start.Reset();
 
-        if(this._finish.IsHidden)
-            this._finish.Show();
-        else this._finish.Reset();
+        if(this.Finish.IsHidden)
+            this.Finish.Show();
+        else this.Finish.Reset();
     }
 
     public Drop(nickname:string, options:any)
     {
-        if(!this._start.IsReady || !this._finish.IsReady)
+        if(!this.Start.IsReady || !this.Finish.IsReady)
         {
             this._actionQueue.push(()=>this.Drop(nickname, options));
             return;
@@ -127,20 +127,22 @@ class RoundEnvironment extends WorldEnvironment
         
         this._showTime = performance.now();
 
-        if(nickname in this._droppedCharacters) return this._droppedCharacters[nickname];
+        if(nickname in this._droppedCharacters && !options.ignoreDropped) return this._droppedCharacters[nickname];
         if(options.sprite === undefined) options.sprite = this.Game.Sprites.Get("characters/neko");
 
         let character = new CharacterEntity(nickname, options.sprite);
-        character.Pos = new Vector(this._start.Pos.X, 0);
+        character.Pos = new Vector(this.Start.Pos.X, 0);
 
-        if(options.canParachute !== undefined) character.CanParachute = options.canParachute;
-        if(options.angle !== undefined) character.SetAngle(options.angle);
-        if(options.initSpeed !== undefined) character.SetInitialSpeed(options.initSpeed);
+        if("angle" in options) character.SetAngle(options.angle);
+        if("initSpeed" in options) character.SetInitialSpeed(options.initSpeed);
+        if("bits" in options) character.Charge(options.bits);
+        if("canParachute" in options) character.CanParachute = options.canParachute;
+        if("isCake" in options && options.isCake) character.MakeACake();
 
         character.OnLand = ()=> this.CheckVictory(character);
 
         this.Spawn(character);
-        this._droppedCharacters[nickname] = character;
+        this._droppedCharacters[nickname + (options.ignoreDropped?"/"+character.Id:"")] = character;
 
         return character;
     }
@@ -149,13 +151,13 @@ class RoundEnvironment extends WorldEnvironment
     {
         if(!character.IsOnGround) return;
 
-        let landWidth = Math.max(this._finish.Pos.X, this.Game.Width - this._finish.Pos.X);
-        let distanceToFlag = Math.abs(this._finish.Pos.X - character.Pos.X);
+        let landWidth = Math.max(this.Finish.Pos.X, this.Game.Width - this.Finish.Pos.X);
+        let distanceToFlag = Math.abs(this.Finish.Pos.X - character.Pos.X);
 
         let percent = 100 - distanceToFlag / landWidth * 100;
         character.DistanceFromFlag = percent;
 
-        if(percent > this._winnerDistance || this._winner === null)
+        if(percent > this._winnerDistance || this._winner === null || !this.IsSpawned(this._winner))
         {
             if(this._winner !== null)
                 this._winner.OnLose();
@@ -169,9 +171,9 @@ class RoundEnvironment extends WorldEnvironment
 
     public Spawn(obj:AObject)
     {
-        if(obj.Id == this._start.Id || obj.Id == this._finish.Id)
+        if(obj.Id == this.Start.Id || obj.Id == this.Finish.Id)
             super.Spawn(obj);
-        else if(!this._isHidden && this._start.IsReady && this._finish.IsReady)
+        else if(!this._isHidden && this.Start.IsReady && this.Finish.IsReady)
             super.Spawn(obj);
     }
 
