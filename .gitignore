@@ -3,8 +3,8 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
-ru.Kanawanagasaki.TwitchDrop/wwwroot/img/*
-ru.Kanawanagasaki.TwitchDrop/wwwroot/static/*
+ru.Kanawanagasaki.TwitchDrop/wwwroot/img
+ru.Kanawanagasaki.TwitchDrop/wwwroot/static
 
 # User-specific files
 *.rsuser
